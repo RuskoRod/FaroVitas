@@ -119,6 +119,7 @@ function registrarInteraccion(tmdb_id,accion){
   interacciones[tmdb_id].score=(interacciones[tmdb_id].score||0)+(mapa[accion]||0);
   interacciones[tmdb_id].accion=accion;
   localStorage.setItem('pv_interact',JSON.stringify(interacciones));
+  if(typeof subirNube==='function')subirNube();
 }
 
 function guardar(){
@@ -129,6 +130,7 @@ function guardar(){
   const clean={};
   Object.keys(biblioteca).forEach(k=>{if(k!=='_subcarpetas')clean[k]=biblioteca[k];});
   localStorage.setItem('pocketvault',JSON.stringify(clean));
+  if(typeof subirNube==='function')subirNube();
 }
 
 function todosLosItems(){

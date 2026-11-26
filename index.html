@@ -24,6 +24,7 @@
       <button class="btn-search" id="btn-buscar">Buscar</button>
     </div>
     <div class="header-controls">
+      <button class="btn-search" id="btn-login">Iniciar sesión</button>
       <label class="theme-switch">
         <input type="checkbox" role="switch" id="theme-toggle" aria-label="Modo claro" autocomplete="off">
         <span class="theme-track" aria-hidden="true">
@@ -123,8 +124,12 @@
   </div>
 
   <!-- config.js debe cargarse ANTES que app.js -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script src="nube.js"></script>
   <script src="ambiente.js"></script>
 </body>
 </html>
