@@ -71,16 +71,28 @@ function iniciarReorder(card,item,idx,lista,e){
   if(navigator.vibrate)navigator.vibrate(15);
   document.addEventListener('pointermove',onReorderMove,{passive:false});
   document.addEventListener('pointerup',onReorderEnd);
-  document.addEventListener('pointercancel',cancelReorder);
+  document.addEventListener('pointercancel',onReorderEnd);
 }
 
+// Busca dónde insertar: la tarjeta más cercana al puntero y si va antes o después (según el lado)
 function objetivoReorder(){
   const s=reorderState;
-  return document.elementsFromPoint(s.x,s.y).find(el=>el.classList&&el.classList.contains('tarjeta')&&el!==s.card&&el!==s.ghost&&el.dataset.idx!==undefined)||null;
+  const r=s.card.getBoundingClientRect();
+  if(s.x>=r.left&&s.x<=r.right&&s.y>=r.top&&s.y<=r.bottom)return null; // soltó sobre sí misma
+  let best=null,bd=Infinity;
+  document.querySelectorAll('#grid-contenido .tarjeta[data-idx]').forEach(el=>{
+    if(el===s.card)return;
+    const b=el.getBoundingClientRect();
+    const dx=Math.max(b.left-s.x,0,s.x-b.right),dy=Math.max(b.top-s.y,0,s.y-b.bottom);
+    const d=dx*dx+dy*dy;
+    if(d<bd){bd=d;best={el,after:s.x>b.left+b.width/2};}
+  });
+  return best;
 }
+function quitarMarcas(){document.querySelectorAll('.reorder-before,.reorder-after').forEach(c=>c.classList.remove('reorder-before','reorder-after'));}
 function marcarObjetivo(){
-  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
-  const t=objetivoReorder();if(t)t.classList.add('reorder-over');
+  quitarMarcas();
+  const t=objetivoReorder();if(t)t.el.classList.add(t.after?'reorder-after':'reorder-before');
 }
 function onReorderMove(e){
   if(!reorderState.dragging)return;
@@ -101,26 +113,28 @@ function limpiarReorder(){
   clearInterval(s.scrollTimer);
   if(s.ghost)s.ghost.remove();
   if(s.card)s.card.classList.remove('reorder-src');
-  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
+  quitarMarcas();
   document.body.classList.remove('reordering');
   document.removeEventListener('pointermove',onReorderMove);
   document.removeEventListener('pointerup',onReorderEnd);
-  document.removeEventListener('pointercancel',cancelReorder);
+  document.removeEventListener('pointercancel',onReorderEnd);
   reorderState={dragging:false};
   noClickUntil=performance.now()+400;
 }
 function onReorderEnd(e){
   if(!reorderState.dragging)return;
-  reorderState.x=e.clientX;reorderState.y=e.clientY;
+  // pointercancel (el navegador se quedó con el gesto): se toma como soltar donde estaba
+  if(e&&e.type==='pointerup'){reorderState.x=e.clientX;reorderState.y=e.clientY;}
   const t=objetivoReorder(),fi=reorderState.srcIdx,lista=reorderState.srcList;
   limpiarReorder();
   if(!t)return;
-  const ti=parseInt(t.dataset.idx);
-  if(isNaN(ti)||ti===fi)return;
-  const[m]=lista.splice(fi,1);lista.splice(ti,0,m);guardar();
+  let pos=parseInt(t.el.dataset.idx)+(t.after?1:0);
+  if(isNaN(pos))return;
+  if(pos>fi)pos-=1;
+  if(pos===fi)return;
+  const[m]=lista.splice(fi,1);lista.splice(pos,0,m);guardar();
   renderGrid(biblioteca[carpetaActual]);
 }
-function cancelReorder(){if(reorderState.dragging)limpiarReorder();}
 // Evita que el navegador scrollee la página mientras arrastrás una tarjeta con el dedo
 document.addEventListener('touchmove',e=>{if(reorderState.dragging)e.preventDefault();},{passive:false});
 
@@ -306,21 +320,29 @@ function crearTarjetaBiblioteca(item,idx){
   card.addEventListener('contextmenu',e=>e.preventDefault());
   let press=null;
   const cancelPress=()=>{if(press){clearTimeout(press.timer);press=null;}};
+  const comenzar=(pt)=>{
+    if(!press)return;
+    clearTimeout(press.timer);press=null;
+    iniciarReorder(card,item,idx,lista,pt);
+  };
   card.addEventListener('pointerdown',e=>{
     if(card.classList.contains('flipped')||reorderState.dragging)return;
     if(e.pointerType==='mouse'&&e.button!==0)return;
-    const p={x:e.clientX,y:e.clientY,id:e.pointerId};
-    p.timer=setTimeout(()=>{
-      press=null;
-      try{card.setPointerCapture(p.id);}catch{}
-      iniciarReorder(card,item,idx,lista,{clientX:p.x,clientY:p.y});
-    },e.pointerType==='mouse'?250:350);
+    // Captura el puntero desde el inicio: si movés rápido y salís de la tarjeta, no se pierde el gesto
+    try{card.setPointerCapture(e.pointerId);}catch{}
+    const mouse=e.pointerType==='mouse';
+    const p={x:e.clientX,y:e.clientY,mouse};
+    // Mouse: se arrastra apenas lo movés. Dedo: mantener ~0,18 s (para no confundirlo con el scroll).
+    if(!mouse)p.timer=setTimeout(()=>comenzar({clientX:p.x,clientY:p.y}),180);
     press=p;
   });
   card.addEventListener('pointermove',e=>{
-    if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10)cancelPress();
+    if(!press)return;
+    const d=Math.hypot(e.clientX-press.x,e.clientY-press.y);
+    if(press.mouse){if(d>5)comenzar(e);}
+    else if(d>10)cancelPress();
   });
-  ['pointerup','pointercancel','pointerleave'].forEach(t=>card.addEventListener(t,cancelPress));
+  ['pointerup','pointercancel'].forEach(t=>card.addEventListener(t,cancelPress));
 
   card.addEventListener('click',e=>{
     if(reorderState.dragging||performance.now()<noClickUntil)return;
