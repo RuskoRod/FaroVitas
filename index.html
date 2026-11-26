@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Farovitas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,25 +24,9 @@
       <button class="btn-search" id="btn-buscar">Buscar</button>
     </div>
     <div class="header-controls">
-      <button class="btn-search" id="btn-login">Iniciar sesión</button>
-      <label class="theme-switch">
-        <input type="checkbox" role="switch" id="theme-toggle" aria-label="Modo claro" autocomplete="off">
-        <span class="theme-track" aria-hidden="true">
-          <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15.3A8.7 8.7 0 0 1 8.7 4a8.7 8.7 0 1 0 11.3 11.3Z"/></svg>
-          <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
-        </span>
-      </label>
-      <label class="stars-switch" title="Estrellas del fondo">
-        <input type="checkbox" role="switch" id="stars-toggle" aria-label="Estrellas del fondo" aria-describedby="stars-hint" autocomplete="off" checked>
-        <span class="stars-track" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2" transform="rotate(20 12 12)"/><path d="M11 17.5h.01M3 7a5 5 0 0 1 3-3m15 13a5 5 0 0 1-3 3"/></svg>
-        </span>
-      </label>
+      <button class="btn-search btn-login" id="btn-login" type="button">Iniciar sesión</button>
+      <button class="btn-ajustes" id="btn-ajustes" type="button" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </div>
-    <p class="stars-help" id="stars-help" hidden>
-      <span id="stars-hint"></span>
-      <a id="stars-open" href="./" target="_blank" rel="noopener" hidden>Abrir en otra pestaña ↗</a>
-    </p>
   </header>
 
   <div class="tabs-bar" id="tabs-bar"></div>
@@ -52,6 +36,33 @@
     <div id="search-info" style="display:none"></div>
     <div class="grid" id="grid-contenido"></div>
   </main>
+
+  <!-- Ajustes -->
+  <div class="modal-overlay" id="modal-ajustes">
+    <div class="modal-box">
+      <h3>Ajustes</h3>
+      <div class="ajuste-row"><span>Modo claro</span><label class="theme-switch">
+        <input type="checkbox" role="switch" id="theme-toggle" aria-label="Modo claro" autocomplete="off">
+        <span class="theme-track" aria-hidden="true">
+          <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15.3A8.7 8.7 0 0 1 8.7 4a8.7 8.7 0 1 0 11.3 11.3Z"/></svg>
+          <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+        </span>
+      </label></div>
+      <div class="ajuste-row"><span>Estrellas del fondo</span><label class="stars-switch" title="Estrellas del fondo">
+        <input type="checkbox" role="switch" id="stars-toggle" aria-label="Estrellas del fondo" autocomplete="off" checked>
+        <span class="stars-track" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2" transform="rotate(20 12 12)"/><path d="M11 17.5h.01M3 7a5 5 0 0 1 3-3m15 13a5 5 0 0 1-3 3"/></svg>
+        </span>
+      </label></div>
+      <div class="ajuste-cuenta" id="ajuste-cuenta" hidden>
+        <span class="modal-label">Cuenta</span>
+        <p class="cuenta-nombre" id="cuenta-nombre"></p>
+        <button class="btn-modal danger" id="btn-logout" type="button" style="width:100%">Cerrar sesión</button>
+      </div>
+      <div class="modal-actions"><button class="btn-modal secondary" id="btn-cerrar-ajustes">Cerrar</button></div>
+    </div>
+  </div>
+  <script>try{if(localStorage.getItem('fv_theme')==='light')document.getElementById('theme-toggle').checked=true;}catch(e){}</script>
 
   <!-- Editar película -->
   <div class="modal-overlay" id="modal-peli">
@@ -130,6 +141,7 @@
   <script src="config.js"></script>
   <script src="app.js"></script>
   <script src="nube.js"></script>
+  <script src="ajustes.js"></script>
   <script src="ambiente.js"></script>
 </body>
 </html>

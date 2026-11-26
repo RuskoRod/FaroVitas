@@ -55,61 +55,74 @@ let vistaActual='carpeta';
 let modoSearch=false;
 let tarjetaAbierta=null;
 
-let dragSrc=null,dragSrcIdx=null;
-
-let reorderState={dragging:false,item:null,ghost:null,srcIdx:null,srcList:null,startX:0,startY:0,longPressTimer:null};
+let reorderState={dragging:false};
+let noClickUntil=0;
 
 function iniciarReorder(card,item,idx,lista,e){
-  const posterSrc=getPosterOrSVG(item);
   const rect=card.getBoundingClientRect();
   const ghost=document.createElement('div');
   ghost.className='tarjeta reorder-ghost';
-  ghost.style.cssText=`width:${rect.width}px;height:${rect.height}px;position:fixed;top:${rect.top}px;left:${rect.left}px;z-index:9999;pointer-events:none;opacity:0.85;transform:scale(1.06) rotate(2deg);transition:transform 0.1s;`;
-  ghost.innerHTML=`<img src="${posterSrc}" alt="">`;
+  ghost.style.cssText=`width:${rect.width}px;height:${rect.height}px;position:fixed;top:${rect.top}px;left:${rect.left}px;z-index:9999;pointer-events:none;opacity:0.9;transition:none;transform:scale(1.06) rotate(2deg);`;
+  ghost.innerHTML=`<img src="${getPosterOrSVG(item)}" alt="">`;
   document.body.appendChild(ghost);
   card.classList.add('reorder-src');
-  reorderState={dragging:true,item,ghost,srcIdx:idx,srcList:lista,card,startX:e.clientX,startY:e.clientY,longPressTimer:null};
+  document.body.classList.add('reordering');
+  reorderState={dragging:true,item,ghost,card,srcIdx:idx,srcList:lista,offX:e.clientX-rect.left,offY:e.clientY-rect.top,x:e.clientX,y:e.clientY,scrollTimer:setInterval(autoScrollReorder,16)};
+  if(navigator.vibrate)navigator.vibrate(15);
   document.addEventListener('pointermove',onReorderMove,{passive:false});
   document.addEventListener('pointerup',onReorderEnd);
+  document.addEventListener('pointercancel',cancelReorder);
 }
 
+function objetivoReorder(){
+  const s=reorderState;
+  return document.elementsFromPoint(s.x,s.y).find(el=>el.classList&&el.classList.contains('tarjeta')&&el!==s.card&&el!==s.ghost&&el.dataset.idx!==undefined)||null;
+}
+function marcarObjetivo(){
+  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
+  const t=objetivoReorder();if(t)t.classList.add('reorder-over');
+}
 function onReorderMove(e){
   if(!reorderState.dragging)return;
   e.preventDefault();
-  const g=reorderState.ghost;
-  const dx=e.clientX-reorderState.startX;
-  const dy=e.clientY-reorderState.startY;
-  const rect=reorderState.card.getBoundingClientRect();
-  g.style.top=(rect.top+dy)+'px';
-  g.style.left=(rect.left+dx)+'px';
-  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
-  const els=document.elementsFromPoint(e.clientX,e.clientY);
-  const target=els.find(el=>el.classList.contains('tarjeta')&&el!==reorderState.card&&el!==g);
-  if(target)target.classList.add('reorder-over');
+  const s=reorderState;s.x=e.clientX;s.y=e.clientY;
+  s.ghost.style.left=(s.x-s.offX)+'px';s.ghost.style.top=(s.y-s.offY)+'px';
+  marcarObjetivo();
 }
-
-function onReorderEnd(e){
-  if(!reorderState.dragging)return;
+function autoScrollReorder(){
+  const s=reorderState;if(!s.dragging)return;
+  const top=130,bottom=window.innerHeight-90;let d=0;
+  if(s.y<top)d=-Math.min(18,Math.ceil((top-s.y)/5));
+  else if(s.y>bottom)d=Math.min(18,Math.ceil((s.y-bottom)/5));
+  if(d){window.scrollBy(0,d);marcarObjetivo();}
+}
+function limpiarReorder(){
+  const s=reorderState;
+  clearInterval(s.scrollTimer);
+  if(s.ghost)s.ghost.remove();
+  if(s.card)s.card.classList.remove('reorder-src');
+  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
+  document.body.classList.remove('reordering');
   document.removeEventListener('pointermove',onReorderMove);
   document.removeEventListener('pointerup',onReorderEnd);
-  reorderState.ghost.remove();
-  reorderState.card.classList.remove('reorder-src');
-  document.querySelectorAll('.tarjeta.reorder-over').forEach(c=>c.classList.remove('reorder-over'));
-  const els=document.elementsFromPoint(e.clientX,e.clientY);
-  const target=els.find(el=>el.classList.contains('tarjeta')&&el!==reorderState.card&&el.dataset.idx!==undefined);
-  if(target&&target.dataset.idx!==undefined){
-    const fi=reorderState.srcIdx;
-    const ti=parseInt(target.dataset.idx);
-    if(fi!==ti){
-      const lista=reorderState.srcList;
-      const[m]=lista.splice(fi,1);lista.splice(ti,0,m);guardar();
-      renderGrid(biblioteca[carpetaActual]);
-      reorderState={dragging:false,item:null,ghost:null,srcIdx:null,srcList:null,startX:0,startY:0,longPressTimer:null};
-      return;
-    }
-  }
-  reorderState={dragging:false,item:null,ghost:null,srcIdx:null,srcList:null,startX:0,startY:0,longPressTimer:null};
+  document.removeEventListener('pointercancel',cancelReorder);
+  reorderState={dragging:false};
+  noClickUntil=performance.now()+400;
 }
+function onReorderEnd(e){
+  if(!reorderState.dragging)return;
+  reorderState.x=e.clientX;reorderState.y=e.clientY;
+  const t=objetivoReorder(),fi=reorderState.srcIdx,lista=reorderState.srcList;
+  limpiarReorder();
+  if(!t)return;
+  const ti=parseInt(t.dataset.idx);
+  if(isNaN(ti)||ti===fi)return;
+  const[m]=lista.splice(fi,1);lista.splice(ti,0,m);guardar();
+  renderGrid(biblioteca[carpetaActual]);
+}
+function cancelReorder(){if(reorderState.dragging)limpiarReorder();}
+// Evita que el navegador scrollee la página mientras arrastrás una tarjeta con el dedo
+document.addEventListener('touchmove',e=>{if(reorderState.dragging)e.preventDefault();},{passive:false});
 
 let interacciones=JSON.parse(localStorage.getItem('pv_interact')||'{}');
 function registrarInteraccion(tmdb_id,accion){
@@ -289,25 +302,28 @@ function crearTarjetaBiblioteca(item,idx){
 
   card.innerHTML=`<img src="${posterSrc}" alt="${item.titulo}">`;
 
+  card.addEventListener('dragstart',e=>e.preventDefault());
+  card.addEventListener('contextmenu',e=>e.preventDefault());
+  let press=null;
+  const cancelPress=()=>{if(press){clearTimeout(press.timer);press=null;}};
   card.addEventListener('pointerdown',e=>{
-    if(card.classList.contains('flipped'))return;
-    if(e.button&&e.button!==0)return;
-    reorderState.longPressTimer=setTimeout(()=>{
-      card.setPointerCapture(e.pointerId);
-      iniciarReorder(card,item,idx,lista,e);
-    },300);
+    if(card.classList.contains('flipped')||reorderState.dragging)return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    const p={x:e.clientX,y:e.clientY,id:e.pointerId};
+    p.timer=setTimeout(()=>{
+      press=null;
+      try{card.setPointerCapture(p.id);}catch{}
+      iniciarReorder(card,item,idx,lista,{clientX:p.x,clientY:p.y});
+    },e.pointerType==='mouse'?250:350);
+    press=p;
   });
-  card.addEventListener('pointerup',()=>{clearTimeout(reorderState.longPressTimer);});
   card.addEventListener('pointermove',e=>{
-    if(!reorderState.dragging){
-      const dx=Math.abs(e.clientX-(reorderState.startX||e.clientX));
-      const dy=Math.abs(e.clientY-(reorderState.startY||e.clientY));
-      if(dx>8||dy>8)clearTimeout(reorderState.longPressTimer);
-    }
+    if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10)cancelPress();
   });
+  ['pointerup','pointercancel','pointerleave'].forEach(t=>card.addEventListener(t,cancelPress));
 
   card.addEventListener('click',e=>{
-    if(reorderState.dragging)return;
+    if(reorderState.dragging||performance.now()<noClickUntil)return;
     if(card.classList.contains('flipped')){
       card.classList.remove('flipped');
       card.innerHTML=`<img src="${posterSrc}" alt="${item.titulo}">`;
@@ -465,36 +481,62 @@ function abrirModalAddChoice(){
   document.getElementById('choice-existente').addEventListener('click',()=>{overlay.remove();abrirMiniSearch();});
 }
 
+let miniSel=new Map(),miniItems=[];
+
 function abrirMiniSearch(){
   const ex=document.getElementById('modal-mini-search');if(ex)ex.remove();
+  miniSel=new Map();miniItems=[];
   const overlay=document.createElement('div');overlay.className='modal-overlay open';overlay.id='modal-mini-search';
-  overlay.innerHTML=`<div class="modal-box modal-wide"><h3>Buscar para añadir a <em>${carpetaActual}</em></h3><input type="text" id="mini-search-input" class="modal-input" placeholder="Buscar en TMDB…" style="margin-top:12px;margin-bottom:0"><div id="mini-search-results" class="mini-results"></div><button class="btn-modal secondary" id="mini-search-cancel" style="margin-top:12px">Cerrar</button></div>`;
+  overlay.innerHTML=`<div class="modal-box modal-wide mini-box"><h3>Buscar para añadir a <em>${carpetaActual}</em></h3><input type="text" id="mini-search-input" class="modal-input" placeholder="Buscar en TMDB…" style="margin-bottom:0"><div id="mini-search-results" class="mini-results"></div><div class="mini-selected" id="mini-selected" hidden><span class="modal-label">Seleccionadas (<b id="mini-sel-count">0</b>)</span><div class="mini-results" id="mini-selected-list"></div></div><div class="modal-actions mini-actions"><button class="btn-modal primary" id="mini-search-ok" disabled>Aceptar</button><button class="btn-modal secondary" id="mini-search-cancel">Cancelar</button></div></div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.getElementById('mini-search-cancel').addEventListener('click',()=>overlay.remove());
+  document.getElementById('mini-search-ok').addEventListener('click',()=>{
+    const nuevos=[...miniSel.values()].filter(it=>!biblioteca[carpetaActual].some(p=>p.tmdb_id===it.tmdb_id));
+    const base=Date.now();
+    nuevos.forEach((it,i)=>biblioteca[carpetaActual].push({...it,id:base+i}));
+    if(nuevos.length)guardar();
+    overlay.remove();renderGrid(biblioteca[carpetaActual]);
+  });
   let timer=null;const inp=document.getElementById('mini-search-input');inp.focus();
   inp.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>runMiniSearch(inp.value.trim()),400);});
 }
 
+function miniRow(item){
+  const row=document.createElement('div');row.className='mini-result-row';
+  const ps=item.tmdb_poster?`https://image.tmdb.org/t/p/w92${item.tmdb_poster}`:makePosterSVG(item.titulo,item.tipo);
+  const ya=!!biblioteca[carpetaActual]?.some(p=>p.tmdb_id===item.tmdb_id);
+  const sel=miniSel.has(item.tmdb_id);
+  row.classList.toggle('selected',sel&&!ya);row.classList.toggle('ya',ya);
+  row.innerHTML=`<img src="${ps}" class="mini-poster" alt=""><div class="mini-info"><div class="mini-title"></div><div class="mini-meta"></div></div><span class="mini-check${sel||ya?' on':''}">✓</span>`;
+  row.querySelector('.mini-title').textContent=item.titulo;
+  row.querySelector('.mini-meta').textContent=item.tipo+(item.tmdb_year?' · '+item.tmdb_year:'')+(ya?' · ya está en la carpeta':'');
+  if(!ya)row.addEventListener('click',()=>{
+    if(miniSel.has(item.tmdb_id))miniSel.delete(item.tmdb_id);else miniSel.set(item.tmdb_id,item);
+    renderMini();
+  });
+  return row;
+}
+
+function renderMini(){
+  const res=document.getElementById('mini-search-results');if(!res)return;
+  if(miniItems.length){res.innerHTML='';miniItems.forEach(it=>res.appendChild(miniRow(it)));}
+  const box=document.getElementById('mini-selected'),list=document.getElementById('mini-selected-list');
+  list.innerHTML='';miniSel.forEach(it=>list.appendChild(miniRow(it)));
+  box.hidden=miniSel.size===0;
+  document.getElementById('mini-sel-count').textContent=miniSel.size;
+  const ok=document.getElementById('mini-search-ok');
+  ok.disabled=miniSel.size===0;ok.textContent=miniSel.size?`Aceptar (${miniSel.size})`:'Aceptar';
+}
+
 async function runMiniSearch(q){
   const el=document.getElementById('mini-search-results');if(!el)return;
-  if(!q){el.innerHTML='';return;}
+  if(!q){miniItems=[];el.innerHTML='';return;}
   el.innerHTML='<p class="mini-loading">Buscando…</p>';
   let items=[];try{items=await tmdbSearch(q,1);}catch{el.innerHTML='<p class="mini-loading">Error.</p>';return;}
-  if(!items.length){el.innerHTML='<p class="mini-loading">Sin resultados.</p>';return;}
-  el.innerHTML='';
-  items.slice(0,15).forEach(item=>{
-    const row=document.createElement('div');row.className='mini-result-row';
-    const ps=item.tmdb_poster?`https://image.tmdb.org/t/p/w92${item.tmdb_poster}`:makePosterSVG(item.titulo,item.tipo);
-    const ya=biblioteca[carpetaActual]?.some(p=>p.tmdb_id===item.tmdb_id);
-    row.innerHTML=`<img src="${ps}" class="mini-poster" alt=""><div class="mini-info"><div class="mini-title">${item.titulo}</div><div class="mini-meta">${item.tipo}${item.tmdb_year?' · '+item.tmdb_year:''}</div></div><button class="mini-add-btn${ya?' added':''}" ${ya?'disabled':''}>${ya?'✓':'＋'}</button>`;
-    if(!ya)row.querySelector('button').addEventListener('click',e=>{
-      e.stopPropagation();biblioteca[carpetaActual].push({...item,id:Date.now()});guardar();
-      const b=row.querySelector('button');b.textContent='✓';b.disabled=true;b.classList.add('added');
-      renderGrid(biblioteca[carpetaActual]);
-    });
-    el.appendChild(row);
-  });
+  if(!items.length){miniItems=[];el.innerHTML='<p class="mini-loading">Sin resultados.</p>';return;}
+  miniItems=items.slice(0,15);
+  renderMini();
 }
 
 function abrirModalConfirmar(mensaje,onConfirm){
@@ -528,7 +570,11 @@ function renderStars(n){starsContainer.querySelectorAll('.star').forEach((s,i)=>
 document.getElementById('btn-guardar-peli').addEventListener('click',()=>{
   const dest=document.getElementById('modal-select-carpeta').value;
   const idx=biblioteca[carpetaActual].findIndex(p=>p.id===peliId);
-  if(idx!==-1){const[p]=biblioteca[carpetaActual].splice(idx,1);p.estrellas=ratingTemp;biblioteca[dest].push(p);guardar();}
+  if(idx!==-1){
+    if(dest===carpetaActual){biblioteca[carpetaActual][idx].estrellas=ratingTemp;}
+    else{const[p]=biblioteca[carpetaActual].splice(idx,1);p.estrellas=ratingTemp;biblioteca[dest].push(p);}
+    guardar();
+  }
   cerrarModal('modal-peli');renderGrid(biblioteca[carpetaActual]);
 });
 document.getElementById('btn-eliminar-peli').addEventListener('click',()=>{

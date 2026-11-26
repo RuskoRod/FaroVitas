@@ -1,4 +1,5 @@
 (() => {
+  // ─── PEGÁ ACÁ LOS VALORES DE TU firebaseConfig ───
   const firebaseConfig = {
     apiKey: 'AIzaSyDEcfGROU-GCd2eI67poWvrUGqJbJpgS7o',
     authDomain: 'farovitas.firebaseapp.com',
@@ -20,6 +21,8 @@
     Object.keys(biblioteca).forEach(k => { if (k !== '_subcarpetas') clean[k] = biblioteca[k]; });
     return clean;
   };
+
+  // Sube tus datos a la nube (con un pequeño retraso para no escribir en cada click)
   window.subirNube = () => {
     if (!user) return;
     clearTimeout(timer);
@@ -31,10 +34,12 @@
       }).catch(console.error);
     }, 800);
   };
+
+  // Escucha cambios de la nube (lo que cambiás en un dispositivo aparece en el otro)
   function escuchar() {
     unsub = docRef().onSnapshot(snap => {
-      if (snap.metadata.hasPendingWrites) return; //NO TOCAR
-      if (!snap.exists) {                          
+      if (snap.metadata.hasPendingWrites) return; // cambio mío, ignorar
+      if (!snap.exists) {                          // primera vez: subir lo que ya tenés local
         if (!snap.metadata.fromCache) subirNube();
         return;
       }
@@ -52,8 +57,10 @@
     }, console.error);
   }
 
+  const cuenta = document.getElementById('ajuste-cuenta');
+  const nombre = document.getElementById('cuenta-nombre');
+
   btn.addEventListener('click', async () => {
-    if (user) { auth.signOut(); return; }
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       await auth.signInWithPopup(provider);
@@ -63,10 +70,17 @@
     }
   });
 
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    auth.signOut();
+    cerrarModal('modal-ajustes');
+  });
+
   auth.onAuthStateChanged(u => {
     if (unsub) { unsub(); unsub = null; }
     user = u;
-    btn.textContent = u ? `Salir (${(u.displayName || u.email).split(' ')[0]})` : 'Iniciar sesión';
+    btn.hidden = !!u;      // con sesión iniciada, el botón del header desaparece
+    cuenta.hidden = !u;    // y aparece "Cerrar sesión" dentro de Ajustes
+    nombre.textContent = u ? (u.displayName ? `${u.displayName} · ${u.email}` : u.email) : '';
     if (u) escuchar();
   });
 })();
